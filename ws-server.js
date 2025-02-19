@@ -19,7 +19,6 @@ wss.on("connection", (ws) => {
       stream: true,
     });
 
-    // Stream response back to frontend
     for await (const chunk of responseGenerator) {
       if (ws.readyState === ws.OPEN) {
         ws.send(JSON.stringify({ response: chunk.message?.content || "" }));
