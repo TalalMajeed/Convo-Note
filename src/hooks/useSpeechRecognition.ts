@@ -15,7 +15,7 @@ const useSpeechRecognition = () => {
       return;
     }
 
-    const recognition = new SpeechRecogsnition();
+    const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = "en-US";
