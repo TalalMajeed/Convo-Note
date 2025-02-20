@@ -35,7 +35,6 @@ wss.on("connection", (ws) => {
         fullResponse += content;
       }
 
-      // Send the complete response at once
       if (fullResponse.trim() && ws.readyState === ws.OPEN) {
         ws.send(
           JSON.stringify({

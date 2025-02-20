@@ -20,9 +20,6 @@ const useSpeechRecognition = () => {
     recognition.interimResults = false;
     recognition.lang = "en-US";
 
-    recognition.onstart = () => setListening(true);
-    recognition.onend = () => setListening(false);
-
     recognition.onresult = (event: any) => {
       const lastResultIndex = event.results.length - 1;
       const latestTranscript = event.results[lastResultIndex][0].transcript;

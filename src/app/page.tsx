@@ -25,6 +25,7 @@ const AudioVisualizer: React.FC = () => {
   const [aiSpeaking, setAiSpeaking] = useState<boolean>(false);
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+  const [processing, setProcessing] = useState<boolean>(false);
 
   const { transcript, listening, startListening, stopListening } =
     useSpeechRecognition();
@@ -57,8 +58,9 @@ const AudioVisualizer: React.FC = () => {
         speakTimeout.current = setTimeout(() => {
           if (!isSpeaking) {
             setAiSpeaking(false);
+            setProcessing(false);
           }
-        }, 5000);
+        }, 3000);
       }
     };
 
@@ -76,6 +78,7 @@ const AudioVisualizer: React.FC = () => {
 
   useEffect(() => {
     if (transcript && ws?.readyState === WebSocket.OPEN) {
+      setProcessing(true);
       ws.send(JSON.stringify({ transcript }));
     }
   }, [transcript]);
@@ -145,6 +148,7 @@ const AudioVisualizer: React.FC = () => {
   }, []);
 
   const getCircleSize = (): number => {
+    if (!listening || processing) return 120;
     return 120 + volume * 2;
   };
 
@@ -157,6 +161,8 @@ const AudioVisualizer: React.FC = () => {
               ? "bg-green-100"
               : !listening
               ? "bg-red-100"
+              : processing
+              ? "bg-orange-100"
               : "bg-blue-100"
           }`}
           style={{
@@ -175,9 +181,11 @@ const AudioVisualizer: React.FC = () => {
               ? "bg-green-500"
               : !listening
               ? "bg-red-500 hover:bg-red-600"
+              : processing
+              ? "bg-orange-500 hover:bg-orange-600"
               : "bg-blue-500 hover:bg-blue-600"
           }`}
-          disabled={aiSpeaking}
+          disabled={aiSpeaking || processing}
           aria-label={listening ? "Stop listening" : "Start listening"}
         >
           {!aiSpeaking && <Mic className="w-8 h-8 text-white" />}
