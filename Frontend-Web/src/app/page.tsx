@@ -48,8 +48,19 @@ const AudioVisualizer: React.FC = () => {
 
         console.log(data.response);
         const utterance = new SpeechSynthesisUtterance(data.response);
-        speechSynthesis.speak(utterance);
+        await speechSynthesis.speak(utterance);
         setIsSpeaking(false);
+        if (microphone.current && microphone.current.mediaStream) {
+          const tracks = microphone.current.mediaStream.getTracks();
+          tracks.forEach((track: MediaStreamTrack) => track.stop());
+          microphone.current.disconnect();
+        }
+
+        if (animationFrame.current) {
+          cancelAnimationFrame(animationFrame.current);
+        }
+
+        stopListening();
 
         if (speakTimeout.current) {
           clearTimeout(speakTimeout.current);
