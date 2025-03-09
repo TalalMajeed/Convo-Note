@@ -18,6 +18,8 @@ logging.basicConfig(level=logging.INFO)
 
 conversations = {}
 
+# Define a class to store patient data and conversation history
+
 class PatientConversation:
     def __init__(self, client_id):
         self.client_id = client_id

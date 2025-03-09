@@ -4,22 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { Mic, Hospital } from "lucide-react";
 import useSpeechRecognition from "../hooks/useSpeechRecognition";
 
-interface AudioContextRef {
-  current: AudioContext | null;
-}
-
-interface AnalyserRef {
-  current: AnalyserNode | null;
-}
-
-interface MediaStreamSourceRef {
-  current: MediaStreamAudioSourceNode | null;
-}
-
-interface AnimationFrameRef {
-  current: number | null;
-}
-
 const AudioVisualizer: React.FC = () => {
   const [volume, setVolume] = useState<number>(0);
   const [aiSpeaking, setAiSpeaking] = useState<boolean>(false);
@@ -27,14 +11,14 @@ const AudioVisualizer: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [processing, setProcessing] = useState<boolean>(false);
 
-  const { transcript, listening, startListening, stopListening } =
-    useSpeechRecognition();
+  const { transcript, listening, startListening, stopListening, resetTranscript } = useSpeechRecognition();
 
-  const audioContext: AudioContextRef = useRef(null);
-  const analyzer: AnalyserRef = useRef(null);
-  const microphone: MediaStreamSourceRef = useRef(null);
-  const animationFrame: AnimationFrameRef = useRef(null);
+  const audioContext = useRef<AudioContext | null>(null);
+  const analyzer = useRef<AnalyserNode | null>(null);
+  const microphone = useRef<MediaStreamAudioSourceNode | null>(null);
+  const animationFrame = useRef<number | null>(null);
   const speakTimeout = useRef<NodeJS.Timeout | null>(null);
+  const silenceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const websocket = new WebSocket("ws://localhost:5000");
@@ -52,7 +36,7 @@ const AudioVisualizer: React.FC = () => {
         setIsSpeaking(false);
         if (microphone.current && microphone.current.mediaStream) {
           const tracks = microphone.current.mediaStream.getTracks();
-          tracks.forEach((track: MediaStreamTrack) => track.stop());
+          tracks.forEach((track) => track.stop());
           microphone.current.disconnect();
         }
 
@@ -88,20 +72,28 @@ const AudioVisualizer: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (transcript && ws?.readyState === WebSocket.OPEN) {
-      setProcessing(true);
-      ws.send(JSON.stringify({ transcript }));
+    if (!transcript) return;
+
+    // Clear previous silence timeout
+    if (silenceTimeout.current) {
+      clearTimeout(silenceTimeout.current);
     }
+
+    // Start a new silence detection timeout
+    silenceTimeout.current = setTimeout(() => {
+      if (transcript && ws?.readyState === WebSocket.OPEN) {
+        setProcessing(true);
+        ws.send(JSON.stringify({ transcript }));
+        resetTranscript(); // Clear transcript after sending
+      }
+    }, 3000); // Wait for 3 seconds of silence
   }, [transcript]);
 
   const initializeAudioAnalyzer = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      audioContext.current = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
+      audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       analyzer.current = audioContext.current.createAnalyser();
       microphone.current = audioContext.current.createMediaStreamSource(stream);
 
@@ -120,8 +112,7 @@ const AudioVisualizer: React.FC = () => {
     const dataArray = new Uint8Array(analyzer.current.frequencyBinCount);
     analyzer.current.getByteFrequencyData(dataArray);
 
-    const average =
-      dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
+    const average = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
     setVolume(average);
 
     animationFrame.current = requestAnimationFrame(analyze);
@@ -135,7 +126,7 @@ const AudioVisualizer: React.FC = () => {
   const handleStopListening = () => {
     if (microphone.current && microphone.current.mediaStream) {
       const tracks = microphone.current.mediaStream.getTracks();
-      tracks.forEach((track: MediaStreamTrack) => track.stop());
+      tracks.forEach((track) => track.stop());
       microphone.current.disconnect();
     }
 
